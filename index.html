@@ -135,7 +135,6 @@
         border-top:1px solid #e6e9ee;
     }
 
-    
     /* Print-specific styles */
     @media print {
         body { background: none; color: #000; font-size: 12pt; }
@@ -992,10 +991,10 @@ function checkStudentNameExists() {
   );
 
   if (alreadyRegistered) {
-    status.textContent = ` A student named "${nameInput}" is already in ${classInput}.`;
+    status.textContent = `❌ A student named "${nameInput}" is already in ${classInput}.`;
     status.style.color = "#d32f2f";
   } else {
-    status.textContent = " Name available for this class.";
+    status.textContent = "✅ Name available for this class.";
     status.style.color = "#2e7d32";
   }
 }
