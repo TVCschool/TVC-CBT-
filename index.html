@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>TVC High School — CBT (Complete)</title>
+  <title>TVC High School â€” CBT (Complete)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { 
@@ -135,6 +135,7 @@
         border-top:1px solid #e6e9ee;
     }
 
+    
     /* Print-specific styles */
     @media print {
         body { background: none; color: #000; font-size: 12pt; }
@@ -147,7 +148,7 @@
 </head>
 <body>
   <div class="wrap">
-    <header><h1>The Valued Child (TVC) High School — CBT</h1></header>
+    <header><h1>The Valued Child (TVC) High School â€” CBT</h1></header>
 
     <div id="loginCard" class="card">
       <div id="loginForm">
@@ -219,7 +220,7 @@
         <details open>
           <summary>Subjects</summary>
           <div class="accordion-content">
-            <h3>Subjects — duration & marks-per-question</h3>
+            <h3>Subjects â€” duration & marks-per-question</h3>
             <div class="row">
               <input id="newSubjectInput" placeholder="Subject name (e.g. Mathematics)" />
               <input id="newSubjectClassInput" placeholder="Class (e.g. JSS1)" />
@@ -589,7 +590,7 @@ document.getElementById("btnLogin").onclick = async () => {
   currentUser = { role: "student", ...student };
   document.getElementById("loginCard").classList.add("hidden");
   document.getElementById("studentCard").classList.remove("hidden");
-  document.getElementById("studentHeader").textContent = `Student Panel — ${student.name} (${student.class})`;
+  document.getElementById("studentHeader").textContent = `Student Panel â€” ${student.name} (${student.class})`;
   prepareStudentSubjectDropdown();
 };
 
@@ -642,7 +643,7 @@ function refreshQuestionAddSubjects(){
   db.subjects.forEach(s => {
     const opt = document.createElement("option");
     opt.value = s.id;
-    opt.text = `${s.name} (${s.class}) — ${s.duration}m, ${s.marksPerQuestion} mark(s)`;
+    opt.text = `${s.name} (${s.class}) â€” ${s.duration}m, ${s.marksPerQuestion} mark(s)`;
     sel.appendChild(opt);
   });
   if (prev) sel.value = prev;
