@@ -1059,6 +1059,47 @@ document.getElementById("btnExportStudents").onclick = function () {
   link.click();
   document.body.removeChild(link);
 }
+
+document.getElementById("btnViewAllAnswers").onclick = function () {
+
+  if (!db.scores.length) {
+    alert("No answers available.");
+    return;
+  }
+
+  let html = "";
+
+  db.scores.forEach(sc => {
+
+    const st = db.students.find(s => s.id === sc.studentId);
+    const qs = db.questions.filter(q => q.subjectId === sc.subjectId);
+
+    html += `<div style="margin-bottom:30px">
+      <h3>${st ? st.name : "Unknown"} — ${sc.subject}</h3>`;
+
+    qs.forEach((q, i) => {
+      html += `
+        <p>
+          <strong>Q${i+1}:</strong> ${q.question}<br>
+          Student Answer: <b>${sc.answers[i] || "N/A"}</b><br>
+          Correct Answer: <b>${q.correct}</b>
+        </p>
+      `;
+    });
+
+    html += `</div><hr>`;
+  });
+
+  document.getElementById("answerSheetHeader").textContent = "All Student Answers";
+  document.getElementById("answerSheetContent").innerHTML = html;
+
+  document.getElementById("adminCard").classList.add("hidden");
+  document.getElementById("answerSheetCard").classList.remove("hidden");
+};
+
+document.getElementById("btnPrintAnswers").onclick = function () {
+  window.print();
+};
   
 function renderAllAdmin() { 
   refreshClassFilters();        // Refreshes the main filters
