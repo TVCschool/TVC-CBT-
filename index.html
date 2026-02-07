@@ -367,6 +367,7 @@ CSV: question,A,B,C,answer
             <table>
               <thead id="resultsThead">
   <tr>
+   <th>Position</th>
     <th>Student Name</th>
     <th>Class</th>
     <th>Subject</th>
@@ -904,29 +905,40 @@ async function finalizeExam(){
    Results & Export
    --------------------------- */
 function renderResults() {
+
   const tbody = document.getElementById("resultsTbody");
   const classFilter = document.getElementById("adminStudentClassFilter").value;
   const subjectFilter = document.getElementById("resultSubjectFilter").value;
 
-  tbody.innerHTML = ""; // Clear existing rows
+  tbody.innerHTML = "";
 
-  const filtered = db.scores.filter(sc => {
+  let filtered = db.scores.filter(sc => {
     const st = db.students.find(s => s.id === sc.studentId);
     if (!st) return false;
+
     return (classFilter === "all" || st.class === classFilter) &&
            (subjectFilter === "all" || sc.subjectId === subjectFilter);
   });
 
-  filtered.forEach(sc => {
+  // ⭐ SORT BY SCORE (Highest first)
+  filtered.sort((a,b) => b.score - a.score);
+
+  filtered.forEach((sc, index) => {
+
     const st = db.students.find(s => s.id === sc.studentId);
+
     tbody.insertAdjacentHTML("beforeend", `
       <tr>
+        <td>${index+1}</td>
         <td>${st ? st.name : 'Unknown'}</td>
         <td>${st ? st.class : '-'}</td>
         <td>${sc.subject}</td>
         <td>${sc.score} / ${sc.totalMarks}</td>
-        <td><button class="small" onclick="showStudentAnswers('${sc.studentId}', '${sc.subjectId}')">View</button></td>
-      </tr>`);
+        <td>
+          <button class="small" onclick="showStudentAnswers('${sc.studentId}', '${sc.subjectId}')">View</button>
+        </td>
+      </tr>
+    `);
   });
 }
   
