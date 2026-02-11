@@ -888,28 +888,38 @@ function shuffleArray(array) {
 }
   
 function renderExamQuestion(){
-  const i = examState.index, q = examState.questions[i], a = examState.answers[i];
-  document.getElementById("examQuestionBox").innerHTML = `<h4>Q${i+1} of ${examState.questions.length}</h4><h3>${escapeHtml(q.question)}</h3>
-    
-    const options = q.shuffledOptions;
 
-document.getElementById("examQuestionBox").innerHTML = `
-<h4>Q${i+1} of ${examState.questions.length}</h4>
-<h3>${escapeHtml(q.question)}</h3>
+  const i = examState.index;
+  const q = examState.questions[i];
+  const a = examState.answers[i];
 
-<div style="display:grid;gap:10px">
-${options.map(opt => `
-  <div class="exam-option ${a===opt.letter?"selected":""}"
-       onclick="studentSelect('${opt.letter}')">
-       ${opt.letter}. ${escapeHtml(opt.text)}
-  </div>
-`).join("")}
-</div>
-`;
+  // safety fallback
+  const options = q.shuffledOptions || [
+    {letter:"A", text:q.A},
+    {letter:"B", text:q.B},
+    {letter:"C", text:q.C}
+  ];
+
+  document.getElementById("examQuestionBox").innerHTML = `
+    <h4>Q${i+1} of ${examState.questions.length}</h4>
+    <h3>${escapeHtml(q.question)}</h3>
+
+    <div style="display:grid;gap:10px">
+      ${options.map(opt => `
+        <div class="exam-option ${a===opt.letter?"selected":""}"
+             onclick="studentSelect('${opt.letter}')">
+             ${opt.letter}. ${escapeHtml(opt.text)}
+        </div>
+      `).join("")}
+    </div>
+  `;
+
   document.getElementById("btnPrevQ").disabled = (i === 0);
+
   const last = (i === examState.questions.length - 1);
   document.getElementById("btnNextQ").classList.toggle("hidden", last);
   document.getElementById("btnSubmitExam").classList.toggle("hidden", !last);
+
   renderExamKeys();
 }
 
