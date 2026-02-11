@@ -483,7 +483,15 @@ async function commit(){
 /* Utility */
 function uid(){ return Date.now().toString(36) + Math.floor(Math.random()*9999).toString(36); }
 function escapeHtml(s){ if(s==null) return ""; return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;" })[m]); }
-// FIX: Show/Hide Password function
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+  
+  // FIX: Show/Hide Password function
 function togglePassVisibility(id, checked){ document.getElementById(id).type = checked ? "text" : "password"; }
 
 /* Accordion Logic */
@@ -843,7 +851,26 @@ document.getElementById("btnStartExam").onclick = () => {
   const sid = document.getElementById("studentSubjectDropdown").value;
   if (!sid) return alert("Select a subject.");
   const subj = db.subjects.find(s => s.id == sid);
-  const questions = db.questions.filter(q => q.subjectId == sid);
+  let questions = db.questions
+  .filter(q => q.subjectId == sid)
+  .map(q => {
+
+    // Create shuffled options ONCE
+    let options = shuffleArray([
+      {letter:"A", text:q.A},
+      {letter:"B", text:q.B},
+      {letter:"C", text:q.C}
+    ]);
+
+    return {
+      ...q,
+      shuffledOptions: options
+    };
+  });
+
+// Now shuffle question order
+questions = shuffleArray(questions);
+  
   if (!questions.length) return alert("No questions found.");
   examState = { subjectId: sid, subjectName: subj.name, durationSec: subj.duration * 60, index: 0, questions, answers: Array(questions.length).fill(null), totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1) };
   document.getElementById("subjectPickerCard").classList.add("hidden");
@@ -852,10 +879,33 @@ document.getElementById("btnStartExam").onclick = () => {
   startExamTimer();
 };
 
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+  
 function renderExamQuestion(){
   const i = examState.index, q = examState.questions[i], a = examState.answers[i];
   document.getElementById("examQuestionBox").innerHTML = `<h4>Q${i+1} of ${examState.questions.length}</h4><h3>${escapeHtml(q.question)}</h3>
-    <div style="display:grid;gap:10px"><div class="exam-option ${a==="A"?"selected":""}" onclick="studentSelect('A')">A. ${q.A}</div><div class="exam-option ${a==="B"?"selected":""}" onclick="studentSelect('B')">B. ${q.B}</div><div class="exam-option ${a==="C"?"selected":""}" onclick="studentSelect('C')">C. ${q.C}</div></div>`;
+    
+    const options = q.shuffledOptions;
+
+document.getElementById("examQuestionBox").innerHTML = `
+<h4>Q${i+1} of ${examState.questions.length}</h4>
+<h3>${escapeHtml(q.question)}</h3>
+
+<div style="display:grid;gap:10px">
+${options.map(opt => `
+  <div class="exam-option ${a===opt.letter?"selected":""}"
+       onclick="studentSelect('${opt.letter}')">
+       ${opt.letter}. ${escapeHtml(opt.text)}
+  </div>
+`).join("")}
+</div>
+`;
   document.getElementById("btnPrevQ").disabled = (i === 0);
   const last = (i === examState.questions.length - 1);
   document.getElementById("btnNextQ").classList.toggle("hidden", last);
