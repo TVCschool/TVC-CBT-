@@ -881,16 +881,7 @@ questions = shuffleArray(questions);
   startExamTimer();
 };
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-  
 function renderExamQuestion(){
-
   const i = examState.index;
   const q = examState.questions[i];
   const a = examState.answers[i];
@@ -1209,34 +1200,39 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
     document.getElementById("loginCard").classList.add("hidden");
 
     if(currentUser.role === "admin"){
+
         document.getElementById("adminCard").classList.remove("hidden");
         renderAllAdmin();
+
     }else{
+
         document.getElementById("studentCard").classList.remove("hidden");
         document.getElementById("studentHeader").textContent =
           `Student Panel — ${currentUser.name} (${currentUser.class})`;
 
-      const backup = localStorage.getItem("exam_backup");
+        const backup = localStorage.getItem("exam_backup");
 
-if(backup && currentUser.role !== "admin"){
+        if(backup){
 
-    examState = JSON.parse(backup);
+            examState = JSON.parse(backup);
 
-    document.getElementById("studentCard").classList.add("hidden");
-    document.getElementById("subjectPickerCard").classList.add("hidden");
-    document.getElementById("examCard").classList.remove("hidden");
+            document.getElementById("subjectPickerCard").classList.add("hidden");
+            document.getElementById("examCard").classList.remove("hidden");
 
-    renderExamQuestion();
-    startExamTimer();
+            renderExamQuestion();
+            startExamTimer();
+            return;
+        }
 
-    return;
-}
         prepareStudentSubjectDropdown();
+    }
+  }
 
   refreshRegClassList();
   renderAllAdmin();
 
 })();
+  
 window.editSubject = editSubject; window.deleteSubject = deleteSubject; window.editStudent = editStudent; window.deleteStudent = deleteStudent;
 window.studentSelect = studentSelect; window.examJump = examJump; window.showStudentAnswers = showStudentAnswers;
 
