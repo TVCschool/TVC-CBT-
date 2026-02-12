@@ -1185,9 +1185,27 @@ function renderAllAdmin() {
 }
 document.getElementById("btnLogoutAdmin").onclick = () => location.reload();
 document.getElementById("btnLogoutStudent").onclick = () => location.reload();
+  localStorage.removeItem("cbt_user");
 document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getElementById("answerSheetCard").classList.add("hidden"); document.getElementById("adminCard").classList.remove("hidden"); };
 
-(async function init(){ await loadDB(); refreshRegClassList(); renderAllAdmin(); })();
+(async function init(){ await loadDB(); 
+                      
+                       const savedUser = localStorage.getItem("cbt_user");
+
+if(savedUser){
+    currentUser = JSON.parse(savedUser);
+
+    await loadDB(); // VERY important!
+
+    if(currentUser.role === "admin"){
+        showAdmin();
+    }else{
+        showStudent();
+    }
+
+    return;
+}
+                       refreshRegClassList(); renderAllAdmin(); })();
 
 window.editSubject = editSubject; window.deleteSubject = deleteSubject; window.editStudent = editStudent; window.deleteStudent = deleteStudent;
 window.studentSelect = studentSelect; window.examJump = examJump; window.showStudentAnswers = showStudentAnswers;
