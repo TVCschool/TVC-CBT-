@@ -926,12 +926,14 @@ function renderExamQuestion(){
 }
 
 function studentSelect(letter){ examState.answers[examState.index] = letter; renderExamQuestion(); }
-function examJump(i){ examState.index = i; renderExamQuestion(); }
+localStorage.setItem("exam_backup", JSON.stringify(examState));
+  function examJump(i){ examState.index = i; renderExamQuestion(); }
 
 // FIX: Nav Button Logic
 document.getElementById("btnNextQ").onclick = () => { if(examState.index < examState.questions.length - 1) { examState.index++; renderExamQuestion(); } };
+  localStorage.setItem("exam_backup", JSON.stringify(examState));
 document.getElementById("btnPrevQ").onclick = () => { if(examState.index > 0) { examState.index--; renderExamQuestion(); } };
-
+localStorage.setItem("exam_backup", JSON.stringify(examState));
 function renderExamKeys(){
   const keysDiv = document.getElementById("questionKeys");
   keysDiv.innerHTML = examState.questions.map((_, i) => `<div class="qkey ${i===examState.index?'active':''} ${examState.answers[i]?'answered':''}" onclick="examJump(${i})">${i+1}</div>`).join("");
@@ -950,6 +952,7 @@ function startExamTimer(){
 document.getElementById("btnSubmitExam").onclick = () => { if (confirm("Submit exam?")) finalizeExam(); };
 
 async function finalizeExam(){
+  localStorage.removeItem("exam_backup");
   clearInterval(examInterval);
   const subj = db.subjects.find(s => s.id == examState.subjectId);
   let score = 0;
@@ -1212,6 +1215,22 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
         document.getElementById("studentCard").classList.remove("hidden");
         document.getElementById("studentHeader").textContent =
           `Student Panel — ${currentUser.name} (${currentUser.class})`;
+
+      const backup = localStorage.getItem("exam_backup");
+
+if(backup && currentUser.role !== "admin"){
+
+    examState = JSON.parse(backup);
+
+    document.getElementById("studentCard").classList.add("hidden");
+    document.getElementById("subjectPickerCard").classList.add("hidden");
+    document.getElementById("examCard").classList.remove("hidden");
+
+    renderExamQuestion();
+    startExamTimer();
+
+    return;
+}
         prepareStudentSubjectDropdown();
     }
 
