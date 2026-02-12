@@ -509,7 +509,7 @@ document.querySelectorAll('.accordion details').forEach(details => {
    Auth Logic
    --------------------------- */
 let currentUser = null;
-
+  
 function toggleAuth(e, type) {
   if(e) e.preventDefault();
   document.getElementById("loginForm").classList.toggle("hidden", type === 'reg');
@@ -581,6 +581,7 @@ document.getElementById("btnLogin").onclick = async () => {
   await loadDB(); 
   if (username === "admin" && password === "admin") {
     currentUser = { role: "admin", username: "admin" };
+    localStorage.setItem("cbt_user", JSON.stringify(currentUser));
     document.getElementById("loginCard").classList.add("hidden");
     document.getElementById("adminCard").classList.remove("hidden");
     renderAllAdmin();
@@ -594,6 +595,7 @@ document.getElementById("btnLogin").onclick = async () => {
   }
 
   currentUser = { role: "student", ...student };
+  localStorage.setItem("cbt_user", JSON.stringify(currentUser));
   document.getElementById("loginCard").classList.add("hidden");
   document.getElementById("studentCard").classList.remove("hidden");
   document.getElementById("studentHeader").textContent = `Student Panel — ${student.name} (${student.class})`;
