@@ -225,6 +225,7 @@
               <input id="newSubjectClassInput" placeholder="Class (e.g. JSS1)" />
               <input id="newSubjectDuration" type="number" min="1" placeholder="Duration (mins)" style="width:160px" />
               <input id="newSubjectMarks" type="number" min="1" placeholder="Marks per question" style="width:160px" />
+             <input id="newSubjectTotalQuestions" type="number" placeholder="Total Questions">
               <button id="btnAddSubject" class="primary">Add Subject</button>
             </div>
             <div class="row">
@@ -235,7 +236,7 @@
                 </select>
             </div>
             <table>
-              <thead><tr><th>Subject</th><th>Class</th><th>Duration (mins)</th><th>Marks / Q</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Subject</th><th>Class</th><th>Duration (mins)</th><th>Total Questions</th><th>Marks / Q</th><th>Actions</th></tr></thead>
               <tbody id="subjectsTbody"></tbody>
             </table>
           </div>
@@ -610,21 +611,47 @@ document.getElementById("btnAddSubject").onclick = () => {
   const cls = document.getElementById("newSubjectClassInput").value.trim();
   const dur = parseInt(document.getElementById("newSubjectDuration").value, 10);
   const marks = parseFloat(document.getElementById("newSubjectMarks").value);
-  if (!name || !cls || !dur || isNaN(marks)) return alert("Fill all fields.");
-  db.subjects.push({ id: uid(), name, class: cls, duration: dur, marksPerQuestion: marks });
+  const total = parseInt(document.getElementById("newSubjectTotalQuestions").value, 10);
+
+if (!name || !cls || !dur || isNaN(marks) || !total)
+    return alert("Fill all fields.");
+
+db.subjects.push({ 
+   id: uid(), 
+   name, 
+   class: cls, 
+   duration: dur, 
+   marksPerQuestion: marks,
+   totalQuestions: total
+});
   commit();
 };
 
 function renderSubjects(){
   const tbody = document.getElementById("subjectsTbody");
   tbody.innerHTML = "";
+
   const filterClass = document.getElementById("subjectClassFilter").value;
-  db.subjects.filter(s => filterClass === "all" || s.class === filterClass).forEach(s => {
-    tbody.insertAdjacentHTML("beforeend", `<tr><td>${escapeHtml(s.name)}</td><td>${s.class}</td><td>${s.duration}</td><td>${s.marksPerQuestion}</td><td>
-      <button class="small" onclick="editSubject('${s.id}')">Edit</button>
-      <button class="small danger" onclick="deleteSubject('${s.id}')">Del</button>
-    </td></tr>`);
-  });
+
+  db.subjects
+    .filter(s => filterClass === "all" || s.class === filterClass)
+    .forEach(s => {
+
+      const totalQuestions = s.totalQuestions || 20;
+      const marks = s.marksPerQuestion || 1;
+
+      tbody.insertAdjacentHTML("beforeend", `<tr>
+        <td>${escapeHtml(s.name)}</td>
+        <td>${s.class}</td>
+        <td>${s.duration} mins</td>
+        <td>${totalQuestions}</td>
+        <td>${marks}</td>
+        <td>
+          <button class="small" onclick="editSubject('${s.id}')">Edit</button>
+          <button class="small danger" onclick="deleteSubject('${s.id}')">Del</button>
+        </td>
+      </tr>`);
+    });
 }
 
 async function editSubject(id){
@@ -861,8 +888,23 @@ document.getElementById("btnStartExam").onclick = () => {
   const sid = document.getElementById("studentSubjectDropdown").value;
   if (!sid) return alert("Select a subject.");
   const subj = db.subjects.find(s => s.id == sid);
-  let questions = db.questions
-    .filter(q => q.subjectId == sid)
+  let pool = db.questions.filter(q => q.subjectId == sid);
+
+// Shuffle the entire bank
+pool = shuffleArray(pool);
+
+// Draw only what the subject requires
+let questions = pool.slice(0, subj.totalQuestions);
+
+  let pool = db.questions.filter(q => q.subjectId == sid);
+
+if(pool.length < subj.totalQuestions){
+   alert("Not enough questions for this subject.");
+   return;
+}
+
+pool = shuffleArray(pool);
+let questions = pool.slice(0, subj.totalQuestions || 20);
     .map(q => {
       return {
         ...q,
