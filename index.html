@@ -1212,17 +1212,32 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
           `Student Panel — ${currentUser.name} (${currentUser.class})`;
 
 
-        if(backup){
-   examState = JSON.parse(backup);
+        const backup = localStorage.getItem("exam_backup");
 
-   if(!examState.questions || examState.questions.length === 0){
-        localStorage.removeItem("exam_backup");
-        return;
-   }
+if(backup){
+  try{
 
-        prepareStudentSubjectDropdown();
+    examState = JSON.parse(backup);
+
+    if(!examState.questions){
+        throw "Invalid backup";
     }
+
+    document.getElementById("subjectPickerCard").classList.add("hidden");
+    document.getElementById("examCard").classList.remove("hidden");
+
+    renderExamQuestion();
+    startExamTimer();
+    return;
+
+  }catch(err){
+
+    console.log("Corrupted backup cleared");
+
+    localStorage.removeItem("exam_backup");
+    localStorage.removeItem("cbt_user");
   }
+}
 
   refreshRegClassList();
   renderAllAdmin();
