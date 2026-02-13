@@ -1221,29 +1221,26 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
 
                 const backup = localStorage.getItem("exam_backup");
 
-                if(backup){
+if(backup){
+   try{
 
-                    examState = JSON.parse(backup);
+      examState = JSON.parse(backup);
 
-                    if(examState?.questions?.length){
+      if(examState.questions && examState.questions.length){
 
-                        document.getElementById("subjectPickerCard").classList.add("hidden");
-                        document.getElementById("examCard").classList.remove("hidden");
+          document.getElementById("subjectPickerCard").classList.add("hidden");
+          document.getElementById("examCard").classList.remove("hidden");
 
-                        renderExamQuestion();
-                        startExamTimer();
-                        return;
-                    }
-                }
+          renderExamQuestion();
+          startExamTimer();
+          return;
+      }
 
-            }catch{
-                localStorage.removeItem("exam_backup");
-            }
-
-            prepareStudentSubjectDropdown();
-        }
-    }
-
+   }catch{
+      localStorage.removeItem("exam_backup");
+   }
+}
+              
   }catch(err){
 
     console.log("Storage corrupted — cleared");
