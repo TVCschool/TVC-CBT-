@@ -1192,52 +1192,62 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
 
   await loadDB();
 
-  const savedUser = localStorage.getItem("cbt_user");
-
-  if(savedUser){
-
-    currentUser = JSON.parse(savedUser);
-
-    document.getElementById("loginCard").classList.add("hidden");
-
-    if(currentUser.role === "admin"){
-
-        document.getElementById("adminCard").classList.remove("hidden");
-        renderAllAdmin();
-
-    }else{
-
-        document.getElementById("studentCard").classList.remove("hidden");
-        document.getElementById("studentHeader").textContent =
-          `Student Panel — ${currentUser.name} (${currentUser.class})`;
-
-
-        const backup = localStorage.getItem("exam_backup");
-
-if(backup){
   try{
 
-    examState = JSON.parse(backup);
+    const savedUser = localStorage.getItem("cbt_user");
 
-    if(!examState.questions){
-        throw "Invalid backup";
+    if(savedUser){
+
+        currentUser = JSON.parse(savedUser);
+
+        document.getElementById("loginCard").classList.add("hidden");
+
+        if(currentUser.role === "admin"){
+
+            document.getElementById("adminCard").classList.remove("hidden");
+            renderAllAdmin();
+
+        }else{
+
+            document.getElementById("studentCard").classList.remove("hidden");
+
+            document.getElementById("studentHeader").textContent =
+            `Student Panel — ${currentUser.name} (${currentUser.class})`;
+
+            try{
+
+                const backup = localStorage.getItem("exam_backup");
+
+                if(backup){
+
+                    examState = JSON.parse(backup);
+
+                    if(examState?.questions?.length){
+
+                        document.getElementById("subjectPickerCard").classList.add("hidden");
+                        document.getElementById("examCard").classList.remove("hidden");
+
+                        renderExamQuestion();
+                        startExamTimer();
+                        return;
+                    }
+                }
+
+            }catch{
+                localStorage.removeItem("exam_backup");
+            }
+
+            prepareStudentSubjectDropdown();
+        }
     }
-
-    document.getElementById("subjectPickerCard").classList.add("hidden");
-    document.getElementById("examCard").classList.remove("hidden");
-
-    renderExamQuestion();
-    startExamTimer();
-    return;
 
   }catch(err){
 
-    console.log("Corrupted backup cleared");
+    console.log("Storage corrupted — cleared");
 
-    localStorage.removeItem("exam_backup");
     localStorage.removeItem("cbt_user");
+    localStorage.removeItem("exam_backup");
   }
-}
 
   refreshRegClassList();
   renderAllAdmin();
