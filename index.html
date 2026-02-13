@@ -903,7 +903,7 @@ function renderExamQuestion(){
       ${options.map(opt => `
         <div class="exam-option ${a===opt.letter?"selected":""}"
              onclick="studentSelect('${opt.letter}')">
-             ${opt.letter. ${escapeHtml(opt.text)}
+             ${opt.letter}. ${escapeHtml(opt.text)}
         </div>     
       `).join("")}
     </div>
@@ -1191,69 +1191,43 @@ document.getElementById("btnLogoutStudent").onclick = () => {
 };
 document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getElementById("answerSheetCard").classList.add("hidden"); document.getElementById("adminCard").classList.remove("hidden"); };
 
-(async function init(){
 
+     (async function init(){
   await loadDB();
-
-  try{
-
+  try {
     const savedUser = localStorage.getItem("cbt_user");
-
     if(savedUser){
-
         currentUser = JSON.parse(savedUser);
-
         document.getElementById("loginCard").classList.add("hidden");
-
         if(currentUser.role === "admin"){
-
             document.getElementById("adminCard").classList.remove("hidden");
             renderAllAdmin();
-
-        }else{
-
+        } else {
             document.getElementById("studentCard").classList.remove("hidden");
-
-            document.getElementById("studentHeader").textContent =
-            `Student Panel — ${currentUser.name} (${currentUser.class})`;
-
-            try{
-
-                const backup = localStorage.getItem("exam_backup");
-
-if(backup){
-   try{
-
-      examState = JSON.parse(backup);
-
-      if(examState.questions && examState.questions.length){
-
-          document.getElementById("subjectPickerCard").classList.add("hidden");
-          document.getElementById("examCard").classList.remove("hidden");
-
-          renderExamQuestion();
-          startExamTimer();
-          return;
-      }
-
-   }catch{
-      localStorage.removeItem("exam_backup");
-   }
-}
-              
-  }catch(err){
-
-    console.log("Storage corrupted — cleared");
-
-    localStorage.removeItem("cbt_user");
-    localStorage.removeItem("exam_backup");
+            document.getElementById("studentHeader").textContent = `Student Panel — ${currentUser.name} (${currentUser.class})`;
+            const backup = localStorage.getItem("exam_backup");
+            if(backup){
+               examState = JSON.parse(backup);
+               if(examState && examState.questions){
+                  document.getElementById("subjectPickerCard").classList.add("hidden");
+                  document.getElementById("examCard").classList.remove("hidden");
+                  renderExamQuestion();
+                  startExamTimer();
+               }
+            } else {
+               prepareStudentSubjectDropdown();
+            }
+        }
+    }
+  } catch(err) {
+    console.error("Initialization error:", err);
+    localStorage.clear();
   }
-
   refreshRegClassList();
-  renderAllAdmin();
-
 })();
   
+  renderAllAdmin();
+
 window.editSubject = editSubject; window.deleteSubject = deleteSubject; window.editStudent = editStudent; window.deleteStudent = deleteStudent;
 window.studentSelect = studentSelect; window.examJump = examJump; window.showStudentAnswers = showStudentAnswers;
 
