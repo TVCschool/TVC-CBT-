@@ -894,7 +894,7 @@ document.getElementById("btnStartExam").onclick = () => {
 pool = shuffleArray(pool);
 
 // Draw only what the subject requires
-let questions = pool.slice(0, subj.totalQuestions);
+let questions = pool.slice(0, subj.totalQuestionsOkay || 20);
 
 if(pool.length < subj.totalQuestions){
    alert("Not enough questions for this subject.");
@@ -902,8 +902,6 @@ if(pool.length < subj.totalQuestions){
 }
 
 pool = shuffleArray(pool);
-let questions = pool.slice(0, subj.totalQuestions || 20);
-    .map(q => {
       return {
         ...q,
         shuffledOptions: shuffleArray([
@@ -912,7 +910,6 @@ let questions = pool.slice(0, subj.totalQuestions || 20);
           { letter: "C", text: q.C }
         ])
       };
-    });
 
   questions = shuffleArray(questions);
 
