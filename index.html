@@ -881,7 +881,8 @@ questions = shuffleArray(questions);
   renderExamQuestion();
   startExamTimer();
 };
-
+localStorage.setItem("exam_backup", JSON.stringify(examState));
+  
 function renderExamQuestion(){
   const i = examState.index;
   const q = examState.questions[i];
@@ -902,7 +903,8 @@ function renderExamQuestion(){
       ${options.map(opt => `
         <div class="exam-option ${a===opt.letter?"selected":""}"
              onclick="studentSelect('${opt.letter}')">
-             ${opt.letter}. ${escapeHtml(opt.text)}
+             ${opt.letter. ${escapeHtml(opt.text)}
+             localStorage.setItem("exam_backup", JSON.stringify(examState));
         </div>
       `).join("")}
     </div>
@@ -911,7 +913,9 @@ function renderExamQuestion(){
   document.getElementById("btnPrevQ").disabled = (i === 0);
 
   const last = (i === examState.questions.length - 1);
+  localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("btnNextQ").classList.toggle("hidden", last);
+  localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("btnSubmitExam").classList.toggle("hidden", !last);
 
   renderExamKeys();
