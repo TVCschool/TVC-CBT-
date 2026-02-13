@@ -834,19 +834,27 @@ async function resetResultsAdvanced() {
   alert("Selected results have been cleared.");
 }
 
-  
 /* ---------------------------
    Exam Engine
-   --------------------------- */
+--------------------------- */
 let examState = null, examInterval = null;
 
-function prepareStudentSubjectDropdown(){
+function saveExamBackup() {
+  localStorage.setItem("exam_backup", JSON.stringify(examState));
+}
+
+function prepareStudentSubjectDropdown() {
   const sel = document.getElementById("studentSubjectDropdown");
   sel.innerHTML = `<option value="">-- Select subject --</option>`;
-  db.subjects.filter(s => s.class === currentUser.class).forEach(s => {
-    const done = db.scores.some(sc => sc.studentId == currentUser.id && sc.subjectId == s.id);
-    sel.insertAdjacentHTML("beforeend", `<option value="${s.id}" ${done?'disabled':''}>${s.name} ${done?'(Done)':''}</option>`);
-  });
+  db.subjects
+    .filter(s => s.class === currentUser.class)
+    .forEach(s => {
+      const done = db.scores.some(sc => sc.studentId == currentUser.id && sc.subjectId == s.id);
+      sel.insertAdjacentHTML(
+        "beforeend",
+        `<option value="${s.id}" ${done ? 'disabled' : ''}>${s.name} ${done ? '(Done)' : ''}</option>`
+      );
+    });
 }
 
 document.getElementById("btnStartExam").onclick = () => {
@@ -854,105 +862,140 @@ document.getElementById("btnStartExam").onclick = () => {
   if (!sid) return alert("Select a subject.");
   const subj = db.subjects.find(s => s.id == sid);
   let questions = db.questions
-  .filter(q => q.subjectId == sid)
-  .map(q => {
+    .filter(q => q.subjectId == sid)
+    .map(q => {
+      return {
+        ...q,
+        shuffledOptions: shuffleArray([
+          { letter: "A", text: q.A },
+          { letter: "B", text: q.B },
+          { letter: "C", text: q.C }
+        ])
+      };
+    });
 
-    // Create shuffled options ONCE
-    let options = shuffleArray([
-      {letter:"A", text:q.A},
-      {letter:"B", text:q.B},
-      {letter:"C", text:q.C}
-    ]);
+  questions = shuffleArray(questions);
 
-    return {
-      ...q,
-      shuffledOptions: options
-    };
-  });
-
-// Now shuffle question order
-questions = shuffleArray(questions);
-  
   if (!questions.length) return alert("No questions found.");
-  examState = { subjectId: sid, subjectName: subj.name, durationSec: subj.duration * 60, index: 0, questions, answers: Array(questions.length).fill(null), totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1) };
- localStorage.setItem("exam_backup", JSON.stringify(examState));
+
+  examState = {
+    subjectId: sid,
+    subjectName: subj.name,
+    durationSec: subj.duration * 60,
+    index: 0,
+    questions,
+    answers: Array(questions.length).fill(null),
+    totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1)
+  };
+
+  saveExamBackup();
+
   document.getElementById("subjectPickerCard").classList.add("hidden");
   document.getElementById("examCard").classList.remove("hidden");
   renderExamQuestion();
   startExamTimer();
 };
-  
-function renderExamQuestion(){
+
+function renderExamQuestion() {
   const i = examState.index;
   const q = examState.questions[i];
   const a = examState.answers[i];
 
-  // safety fallback
   const options = q.shuffledOptions || [
-    {letter:"A", text:q.A},
-    {letter:"B", text:q.B},
-    {letter:"C", text:q.C}
+    { letter: "A", text: q.A },
+    { letter: "B", text: q.B },
+    { letter: "C", text: q.C }
   ];
 
   document.getElementById("examQuestionBox").innerHTML = `
-    <h4>Q${i+1} of ${examState.questions.length}</h4>
+    <h4>Q${i + 1} of ${examState.questions.length}</h4>
     <h3>${escapeHtml(q.question)}</h3>
-
     <div style="display:grid;gap:10px">
       ${options.map(opt => `
-        <div class="exam-option ${a===opt.letter?"selected":""}"
+        <div class="exam-option ${a === opt.letter ? "selected" : ""}"
              onclick="studentSelect('${opt.letter}')">
              ${opt.letter}. ${escapeHtml(opt.text)}
-        </div>     
+        </div>
       `).join("")}
     </div>
   `;
-localStorage.setItem("exam_backup", JSON.stringify(examState));
+
   document.getElementById("btnPrevQ").disabled = (i === 0);
 
   const last = (i === examState.questions.length - 1);
-  localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("btnNextQ").classList.toggle("hidden", last);
-  localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("btnSubmitExam").classList.toggle("hidden", !last);
 
   renderExamKeys();
+  saveExamBackup();
 }
 
-function studentSelect(letter){ examState.answers[examState.index] = letter; renderExamQuestion(); }
-localStorage.setItem("exam_backup", JSON.stringify(examState));
-  function examJump(i){ examState.index = i; renderExamQuestion(); }
+function studentSelect(letter) {
+  examState.answers[examState.index] = letter;
+  renderExamQuestion();
+}
 
-// FIX: Nav Button Logic
-document.getElementById("btnNextQ").onclick = () => { if(examState.index < examState.questions.length - 1) { examState.index++; renderExamQuestion(); } };
-  localStorage.setItem("exam_backup", JSON.stringify(examState));
-document.getElementById("btnPrevQ").onclick = () => { if(examState.index > 0) { examState.index--; renderExamQuestion(); } };
-localStorage.setItem("exam_backup", JSON.stringify(examState));
-function renderExamKeys(){
+function examJump(i) {
+  examState.index = i;
+  renderExamQuestion();
+}
+
+document.getElementById("btnNextQ").onclick = () => {
+  if (examState.index < examState.questions.length - 1) {
+    examState.index++;
+    renderExamQuestion();
+  }
+};
+
+document.getElementById("btnPrevQ").onclick = () => {
+  if (examState.index > 0) {
+    examState.index--;
+    renderExamQuestion();
+  }
+};
+
+function renderExamKeys() {
   const keysDiv = document.getElementById("questionKeys");
-  keysDiv.innerHTML = examState.questions.map((_, i) => `<div class="qkey ${i===examState.index?'active':''} ${examState.answers[i]?'answered':''}" onclick="examJump(${i})">${i+1}</div>`).join("");
+  keysDiv.innerHTML = examState.questions.map((_, i) => `
+    <div class="qkey ${i === examState.index ? 'active' : ''} ${examState.answers[i] ? 'answered' : ''}" 
+         onclick="examJump(${i})">${i + 1}</div>
+  `).join("");
 }
 
-function startExamTimer(){
+function startExamTimer() {
   clearInterval(examInterval);
   examInterval = setInterval(() => {
     examState.durationSec--;
-    const s = Math.max(0, examState.durationSec), mm = Math.floor(s/60).toString().padStart(2,"0"), ss = (s%60).toString().padStart(2,"0");
+    const s = Math.max(0, examState.durationSec);
+    const mm = Math.floor(s / 60).toString().padStart(2, "0");
+    const ss = (s % 60).toString().padStart(2, "0");
     document.getElementById("examTimer").textContent = `${mm}:${ss}`;
     if (examState.durationSec <= 0) finalizeExam();
+    saveExamBackup();
   }, 1000);
 }
 
-document.getElementById("btnSubmitExam").onclick = () => { if (confirm("Submit exam?")) finalizeExam(); };
+document.getElementById("btnSubmitExam").onclick = () => {
+  if (confirm("Submit exam?")) finalizeExam();
+};
 
-async function finalizeExam(){
-  localStorage.removeItem("exam_backup");
+async function finalizeExam() {
   clearInterval(examInterval);
   const subj = db.subjects.find(s => s.id == examState.subjectId);
   let score = 0;
-  examState.questions.forEach((q, idx) => { if (examState.answers[idx] === q.correct) score += Number(subj.marksPerQuestion); });
-  db.scores.push({ studentId: currentUser.id, subjectId: examState.subjectId, subject: examState.subjectName, score, totalMarks: examState.totalMarks, answers: examState.answers });
+  examState.questions.forEach((q, idx) => {
+    if (examState.answers[idx] === q.correct) score += Number(subj.marksPerQuestion);
+  });
+  db.scores.push({
+    studentId: currentUser.id,
+    subjectId: examState.subjectId,
+    subject: examState.subjectName,
+    score,
+    totalMarks: examState.totalMarks,
+    answers: examState.answers
+  });
   await commit();
+  localStorage.removeItem("exam_backup");
   document.getElementById("examCard").classList.add("hidden");
   document.getElementById("subjectPickerCard").classList.remove("hidden");
   prepareStudentSubjectDropdown();
