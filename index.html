@@ -875,6 +875,7 @@ questions = shuffleArray(questions);
   
   if (!questions.length) return alert("No questions found.");
   examState = { subjectId: sid, subjectName: subj.name, durationSec: subj.duration * 60, index: 0, questions, answers: Array(questions.length).fill(null), totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1) };
+  localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("subjectPickerCard").classList.add("hidden");
   document.getElementById("examCard").classList.remove("hidden");
   renderExamQuestion();
@@ -1210,19 +1211,14 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
         document.getElementById("studentHeader").textContent =
           `Student Panel — ${currentUser.name} (${currentUser.class})`;
 
-        const backup = localStorage.getItem("exam_backup");
 
         if(backup){
+   examState = JSON.parse(backup);
 
-            examState = JSON.parse(backup);
-
-            document.getElementById("subjectPickerCard").classList.add("hidden");
-            document.getElementById("examCard").classList.remove("hidden");
-
-            renderExamQuestion();
-            startExamTimer();
-            return;
-        }
+   if(!examState.questions || examState.questions.length === 0){
+        localStorage.removeItem("exam_backup");
+        return;
+   }
 
         prepareStudentSubjectDropdown();
     }
