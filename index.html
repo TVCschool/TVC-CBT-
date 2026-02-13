@@ -904,12 +904,11 @@ function renderExamQuestion(){
         <div class="exam-option ${a===opt.letter?"selected":""}"
              onclick="studentSelect('${opt.letter}')">
              ${opt.letter. ${escapeHtml(opt.text)}
-             localStorage.setItem("exam_backup", JSON.stringify(examState));
-        </div>
+        </div>     
       `).join("")}
     </div>
   `;
-
+localStorage.setItem("exam_backup", JSON.stringify(examState));
   document.getElementById("btnPrevQ").disabled = (i === 0);
 
   const last = (i === examState.questions.length - 1);
