@@ -885,40 +885,37 @@ function prepareStudentSubjectDropdown() {
 }
 
 document.getElementById("btnStartExam").onclick = () => {
+document.getElementById("btnStartExam").onclick = () => {
+
   const sid = document.getElementById("studentSubjectDropdown").value;
   if (!sid) return alert("Select a subject.");
+
   const subj = db.subjects.find(s => s.id == sid);
-  let pool = db.questions.filter(q => q.subjectId == sid);
-
-// Shuffle the entire bank
-pool = shuffleArray(pool);
-
-// Draw only what the subject requires
-let questions = pool.slice(0, subj.totalQuestions);
 
   let pool = db.questions.filter(q => q.subjectId == sid);
 
-if(pool.length < subj.totalQuestions){
-   alert("Not enough questions for this subject.");
-   return;
-}
+  // Prevent exam crash
+  if(pool.length < (subj.totalQuestions || 20)){
+     alert("Not enough questions for this subject.");
+     return;
+  }
 
-pool = shuffleArray(pool);
-let questions = pool.slice(0, subj.totalQuestions || 20);
-    .map(q => {
-      return {
+  // Shuffle question bank
+  pool = shuffleArray(pool);
+
+  // Pick only required number
+  let questions = pool.slice(0, subj.totalQuestions || 20)
+    .map(q => ({
         ...q,
         shuffledOptions: shuffleArray([
-          { letter: "A", text: q.A },
-          { letter: "B", text: q.B },
-          { letter: "C", text: q.C }
+          { letter:"A", text:q.A },
+          { letter:"B", text:q.B },
+          { letter:"C", text:q.C }
         ])
-      };
-    });
+    }));
 
+  // Final shuffle
   questions = shuffleArray(questions);
-
-  if (!questions.length) return alert("No questions found.");
 
   examState = {
     subjectId: sid,
@@ -934,10 +931,11 @@ let questions = pool.slice(0, subj.totalQuestions || 20);
 
   document.getElementById("subjectPickerCard").classList.add("hidden");
   document.getElementById("examCard").classList.remove("hidden");
+
   renderExamQuestion();
   startExamTimer();
 };
-
+  
 function renderExamQuestion() {
   const i = examState.index;
   const q = examState.questions[i];
@@ -1309,8 +1307,6 @@ document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getEle
   }
   refreshRegClassList();
 })();
-  
-  renderAllAdmin();
 
 window.editSubject = editSubject; window.deleteSubject = deleteSubject; window.editStudent = editStudent; window.deleteStudent = deleteStudent;
 window.studentSelect = studentSelect; window.examJump = examJump; window.showStudentAnswers = showStudentAnswers;
