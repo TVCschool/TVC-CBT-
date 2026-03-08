@@ -143,7 +143,46 @@
         #answerSheetCard { display: block !important; }
         #answerSheetCard .row { display: flex; justify-content: space-between; }
     }
+  @media print {
+
+  body * {
+    visibility: hidden;
+  }
+
+  #answerSheetCard,
+  #answerSheetCard * {
+    visibility: visible;
+  }
+
+  #answerSheetCard {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+}
+.success{
+   background:#28a745;
+   color:white;
+}
+
+.danger{
+   background:#dc3545;
+   color:white;
+}
+
   </style>
+  
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  
 </head>
 <body>
   <div class="wrap">
@@ -189,8 +228,9 @@
       <option value="SSS 3">SSS 3</option>
     </select>
   </div>
-
 </div>
+<p id="slotInfo" style="font-weight:bold;"></p>
+
           <input id="regUser" placeholder="Choose Username" />
           <input id="regPass" type="password" placeholder="Create Password" />
           <button id="btnRegister" class="primary">Register</button>
@@ -215,6 +255,22 @@
         </div>
       </div>
 
+<h3>Set Class Limit</h3>
+
+<select id="limitClassSelect">
+  <option value="">-- Select Class --</option>
+  <option value="JSS1">JSS1</option>
+  <option value="JSS2">JSS2</option>
+  <option value="JSS3">JSS3</option>
+  <option value="SS1">SS1</option>
+  <option value="SS2">SS2</option>
+  <option value="SS3">SS3</option>
+</select>
+
+<input type="number" id="limitNumber" placeholder="Enter max students">
+<button id="btnSaveLimit">Save Limit</button>
+<p id="limitStatus" style="color:green; font-weight:bold;"></p>
+      
       <div class="accordion">
         <details open>
           <summary>Subjects</summary>
@@ -385,6 +441,17 @@ CSV: question,A,B,C,answer
     <div id="answerSheetCard" class="card hidden">
       <div class="row" style="justify-content:space-between">
         <h2 id="answerSheetHeader"></h2>
+        
+<div class="row" style="margin:10px 0;">
+  <input 
+    type="text" 
+    id="answerSearchInput" 
+    placeholder="Search student name..." 
+    style="flex:1;"
+    oninput="filterAnswerScripts()"
+  />
+</div>
+
         <div>
             <button id="btnCloseAnswerSheet" class="muted">Close</button>
             <button id="btnPrintAnswers" class="muted">Print All</button>
@@ -407,10 +474,12 @@ CSV: question,A,B,C,answer
           <select id="studentSubjectDropdown" style="min-width:260px"></select>
           <button id="btnStartExam" class="primary">Start Exam</button>
         </div>
+        
         <p class="muted">Completed subjects are disabled. After submitting an exam you will only see a confirmation (score is available to admin).</p>
         <p id="studentMsg" class="muted" style="margin-top:10px"></p>
       </div>
 
+ 
       <div id="examCard" class="card hidden">
         <div class="row" style="justify-content:space-between">
           <h3 id="examSubjectTitle"></h3>
@@ -427,12 +496,38 @@ CSV: question,A,B,C,answer
           </div>
           <div id="examProgress" class="muted"></div>
         </div>
-
+        
         <div id="questionKeys" class="qkeys"></div>
         <p id="examMsg" class="muted"></p>
+      </div> 
+      </div> 
+      
+<div id="resumeModalOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+      <div class="card" style="max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        <h2 style="color: #e53935; margin-top: 0;">Exam in Progress</h2>
+        <p class="muted" style="margin-bottom: 20px;">We detected an unfinished exam. Would you like to resume where you left off?</p>
+        <div class="row" style="justify-content: center; gap: 15px;">
+          <button id="btnCancelResume" class="muted">Discard & Start Over</button>
+          <button id="btnConfirmResume" class="primary">Resume Exam</button>
+        </div>
       </div>
     </div>
-  </div>
+      
+<div id="submitModalOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+      <div class="card" style="max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        <h2 style="color: #1a237e; margin-top: 0;">Submit Exam?</h2>
+        <p class="muted" style="margin-bottom: 20px;">Are you sure you are ready to submit? You will not be able to change your answers once submitted.</p>
+        <div class="row" style="justify-content: center; gap: 15px;">
+          <button id="btnCancelSubmit" class="muted">Go Back</button>
+          <button id="btnConfirmSubmit" class="primary">Yes, Submit</button>
+        </div>
+      </div>
+    </div>
+      
+      
+      </div> 
+      
+
 
 <script>
 /* ---------------------------
@@ -442,8 +537,13 @@ const JSONBIN_MASTER_KEY = "$2a$10$fWok9ba27BiXeCpOUIUYaOKx8SDCAhODlzlPkZ.6pyu3x
 const JSONBIN_BIN_ID = "68bc605c43b1c97be9391c1d";
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
-let db = { subjects: [], questions: [], students: [], scores: [] };
-
+let db = JSON.parse(localStorage.getItem("cbt_db")) || {
+  users: [],
+  subjects: [],
+  questions: [],
+  scores: [], 
+classLimits: {} };
+const SCHOOL_NAME = "THE VALUED CHILD (TVC) HIGH SCHOOL";
 async function saveDB(){
   try {
     const response = await fetch(JSONBIN_URL, {
@@ -480,6 +580,7 @@ async function commit(){
   renderAllAdmin();
   refreshRegClassList();
 }
+
 
 /* Utility */
 function uid(){ return Date.now().toString(36) + Math.floor(Math.random()*9999).toString(36); }
@@ -536,6 +637,16 @@ document.getElementById("btnRegister").onclick = async () => {
   const cls = document.getElementById("regClassSelect").value;
   const pass = document.getElementById("regPass").value.trim();
 
+  // Class limit restriction
+const currentCount = db.students.filter(s => s.class === cls).length;
+const maxAllowed = db.classLimits ? db.classLimits[cls] : null;
+
+if (maxAllowed && currentCount >= maxAllowed) {
+  alert("Registration closed. Class is full.");
+  return;
+}
+  
+  
   // 1. Basic Validation
   if (!name || !user || !cls || !pass) {
     return alert("Please fill all registration fields.");
@@ -584,6 +695,7 @@ document.getElementById("btnLogin").onclick = async () => {
     currentUser = { role: "admin", username: "admin" };
     localStorage.setItem("cbt_user", JSON.stringify(currentUser));
     document.getElementById("loginCard").classList.add("hidden");
+
     document.getElementById("adminCard").classList.remove("hidden");
     renderAllAdmin();
     return;
@@ -601,7 +713,21 @@ document.getElementById("btnLogin").onclick = async () => {
   document.getElementById("studentCard").classList.remove("hidden");
   document.getElementById("studentHeader").textContent = `Student Panel — ${student.name} (${student.class})`;
   prepareStudentSubjectDropdown();
-};
+  
+  const savedExam = localStorage.getItem("examState_" + student.id);
+  if (savedExam) {
+      examState = JSON.parse(savedExam);
+      
+      if (examState.endTime && Date.now() > examState.endTime) {
+          alert("The time for your unfinished exam has expired.");
+          localStorage.removeItem("examState_" + student.id);
+          examState = null;
+      } else {
+          promptResumeExam(student.id); // Triggers our custom UI
+          return;
+      }
+  }
+  }
 
 /* ---------------------------
    Admin Logic
@@ -622,7 +748,8 @@ db.subjects.push({
    class: cls, 
    duration: dur, 
    marksPerQuestion: marks,
-   totalQuestions: total
+   totalQuestions: total,
+  isActive: false
 });
   commit();
 };
@@ -637,7 +764,7 @@ function renderSubjects(){
     .filter(s => filterClass === "all" || s.class === filterClass)
     .forEach(s => {
 
-      const totalQuestions = s.totalQuestions || 20;
+      const totalQuestions = s.totalQuestions || 10;
       const marks = s.marksPerQuestion || 1;
 
       tbody.insertAdjacentHTML("beforeend", `<tr>
@@ -649,6 +776,12 @@ function renderSubjects(){
         <td>
           <button class="small" onclick="editSubject('${s.id}')">Edit</button>
           <button class="small danger" onclick="deleteSubject('${s.id}')">Del</button>
+
+<button 
+   class="small ${s.isActive ? 'success' : 'danger'}"
+   onclick="toggleExamStatus('${s.id}')">
+   ${s.isActive ? "Deactivate" : "Activate"}
+</button>
         </td>
       </tr>`);
     });
@@ -667,6 +800,21 @@ async function deleteSubject(id){
     await commit();
   }
 }
+
+function toggleExamStatus(subjectId){
+
+  const subj = db.subjects.find(s => s.id === subjectId);
+  if(!subj) return;
+
+  subj.isActive = !subj.isActive;
+
+  saveDB();
+
+  alert(subj.isActive ? "Exam Activated" : "Exam Deactivated");
+
+  renderSubjects();
+}
+
 
 /* ---------------------------
    Admin: Questions (A/B/C only). Keep subject selected after add.
@@ -861,115 +1009,173 @@ async function resetResultsAdvanced() {
   alert("Selected results have been cleared.");
 }
 
+function promptResumeExam(studentId) {
+    document.getElementById("resumeModalOverlay").classList.remove("hidden");
+    document.getElementById("subjectPickerCard").classList.add("hidden"); // Hide dashboard
+
+    // If they click "Resume"
+    document.getElementById("btnConfirmResume").onclick = () => {
+        document.getElementById("resumeModalOverlay").classList.add("hidden");
+        document.getElementById("examCard").classList.remove("hidden");
+        renderExamQuestion();
+        startExamTimer();
+    };
+
+    // If they click "Discard"
+    document.getElementById("btnCancelResume").onclick = () => {
+        document.getElementById("resumeModalOverlay").classList.add("hidden");
+        localStorage.removeItem("examState_" + studentId);
+        examState = null;
+        document.getElementById("subjectPickerCard").classList.remove("hidden");
+        prepareStudentSubjectDropdown();
+    };
+}
+
+
 /* ---------------------------
    Exam Engine
 --------------------------- */
 let examState = null, examInterval = null;
 
-function saveExamBackup() {
-  localStorage.setItem("exam_backup", JSON.stringify(examState));
-}
-
 function prepareStudentSubjectDropdown() {
+
   const sel = document.getElementById("studentSubjectDropdown");
   sel.innerHTML = `<option value="">-- Select subject --</option>`;
+
   db.subjects
-    .filter(s => s.class === currentUser.class)
+    .filter(s => 
+        s.class === currentUser.class && 
+        s.isActive === true
+    )
     .forEach(s => {
-      const done = db.scores.some(sc => sc.studentId == currentUser.id && sc.subjectId == s.id);
+
+      const done = db.scores.some(sc => 
+        sc.studentId == currentUser.id && sc.subjectId == s.id
+      );
+
       sel.insertAdjacentHTML(
         "beforeend",
-        `<option value="${s.id}" ${done ? 'disabled' : ''}>${s.name} ${done ? '(Done)' : ''}</option>`
+        `<option value="${s.id}" ${done ? 'disabled' : ''}>
+          ${s.name} ${done ? '(Done)' : ''}
+        </option>`
       );
+
     });
+
 }
 
+// -------------------- Start Exam --------------------
 document.getElementById("btnStartExam").onclick = () => {
-  const sid = document.getElementById("studentSubjectDropdown").value;
-  if (!sid) return alert("Select a subject.");
-  const subj = db.subjects.find(s => s.id == sid);
-  let pool = db.questions.filter(q => q.subjectId == sid);
+    const sid = document.getElementById("studentSubjectDropdown").value;
+    if (!sid) return alert("Select a subject.");
 
-// Shuffle the entire bank
-pool = shuffleArray(pool);
-
-// Draw only what the subject requires
-let questions = pool.slice(0, subj.totalQuestionsOkay || 20);
-
-if(pool.length < subj.totalQuestions){
-   alert("Not enough questions for this subject.");
-   return;
+    const subj = db.subjects.find(s => s.id == sid);
+if (!subj.isActive) {
+  alert("This exam is not active yet. Wait for admin.");
+  return;
 }
+    
+    if (!subj) return alert("Subject not found.");
 
-pool = shuffleArray(pool);
-      return {
-        ...q,
-        shuffledOptions: shuffleArray([
-          { letter: "A", text: q.A },
-          { letter: "B", text: q.B },
-          { letter: "C", text: q.C }
-        ])
-      };
+    let pool = db.questions.filter(q => q.subjectId == sid);
+    if (pool.length < subj.totalQuestions) return alert("Not enough questions.");
 
-  questions = shuffleArray(questions);
+    pool = shuffleArray(pool);
+    let questions = pool.slice(0, subj.totalQuestions || 10);
 
-  if (!questions.length) return alert("No questions found.");
+    questions = questions.map(q => ({
+    ...q
+}));
 
-  examState = {
-    subjectId: sid,
-    subjectName: subj.name,
-    durationSec: subj.duration * 60,
-    index: 0,
-    questions,
-    answers: Array(questions.length).fill(null),
-    totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1)
-  };
+    if (!questions.length) return alert("No questions found.");
 
-  saveExamBackup();
+    examState = {
+        subjectId: sid,
+        subjectName: subj.name,
+        durationSec: subj.duration * 60,
+        endTime: Date.now() + (subj.duration * 60 * 1000),
+        index: 0,
+        questions,
+        answers: Array(questions.length).fill(null),
+        totalMarks: questions.length * (Number(subj.marksPerQuestion) || 1)
+    };
+examState.tabSwitchCount = 0;
+    // Save exam and mark as in-progress
+    localStorage.setItem("examState_" + currentUser.id, JSON.stringify(examState));
+    localStorage.setItem("examInProgress", "true");
 
-  document.getElementById("subjectPickerCard").classList.add("hidden");
-  document.getElementById("examCard").classList.remove("hidden");
-  renderExamQuestion();
-  startExamTimer();
+    // Show exam page
+    document.getElementById("subjectPickerCard").classList.add("hidden");
+    document.getElementById("examCard").classList.remove("hidden");
+
+    renderExamQuestion();
+    startExamTimer();
 };
 
+// -------------------- Finish Exam --------------------
+function finishExam() {
+    // Calculate score here
+    // ...
+
+    // Clear saved state
+    localStorage.removeItem("examState_" + currentUser.id);
+
+    document.getElementById("examCard").classList.add("hidden");
+    document.getElementById("subjectPickerCard").classList.remove("hidden");
+}
+
+
 function renderExamQuestion() {
+  // Safety Check: If state is empty
+  if (!examState || !examState.questions || examState.questions.length === 0) {
+      alert("Exam data corrupted. Please restart.");
+      localStorage.removeItem("examState_" + currentUser.id);
+      location.reload();
+      return;
+  }
+
   const i = examState.index;
   const q = examState.questions[i];
   const a = examState.answers[i];
 
-  const options = q.shuffledOptions || [
-    { letter: "A", text: q.A },
-    { letter: "B", text: q.B },
-    { letter: "C", text: q.C }
-  ];
+  // Self-Healing: If shuffledOptions is missing (from old save), regenerate it
+  const options = [
+  { letter: "A", text: q.A },
+  { letter: "B", text: q.B },
+  { letter: "C", text: q.C }
+];
 
-  document.getElementById("examQuestionBox").innerHTML = `
+  const container = document.getElementById("examQuestionBox");
+  if(!container) return; // Prevent crash if element missing
+
+  container.innerHTML = `
     <h4>Q${i + 1} of ${examState.questions.length}</h4>
     <h3>${escapeHtml(q.question)}</h3>
     <div style="display:grid;gap:10px">
       ${options.map(opt => `
-        <div class="exam-option ${a === opt.letter ? "selected" : ""}"
+        <div class="exam-option ${a === opt.letter ? "selected" :""}"
              onclick="studentSelect('${opt.letter}')">
-             ${opt.letter}. ${escapeHtml(opt.text)}
+             <span class="pill">${opt.letter}</span> ${escapeHtml(opt.text)}
         </div>
       `).join("")}
     </div>
   `;
 
-  document.getElementById("btnPrevQ").disabled = (i === 0);
 
+  // Button Visibility
+  document.getElementById("btnPrevQ").disabled = (i === 0);
   const last = (i === examState.questions.length - 1);
   document.getElementById("btnNextQ").classList.toggle("hidden", last);
   document.getElementById("btnSubmitExam").classList.toggle("hidden", !last);
 
   renderExamKeys();
-  saveExamBackup();
 }
+
 
 function studentSelect(letter) {
   examState.answers[examState.index] = letter;
   renderExamQuestion();
+saveExamState();
 }
 
 function examJump(i) {
@@ -991,6 +1197,48 @@ document.getElementById("btnPrevQ").onclick = () => {
   }
 };
 
+document.addEventListener("visibilitychange", async () => {
+  if (!examState || examState.submitted === true) return;
+
+  if (document.hidden) {
+    // User left the tab - increment and save
+    examState.tabSwitchCount = (examState.tabSwitchCount || 0) + 1;
+    saveExamState(); 
+  } else {
+    // User returned - check violations
+    if (examState.tabSwitchCount >= 3) {
+      alert("Exam automatically submitted due to multiple tab switches (3/3 violations).");
+      examState.submitted = true;
+      try {
+        await finalizeExam(true);
+      } catch (err) {
+        console.error("Submission error:", err);
+        alert("Error during auto-submission.");
+      }
+    } else {
+      alert(`⚠️ Warning ${examState.tabSwitchCount}/3: You left the exam tab! Do not switch tabs or your exam will be automatically submitted.`);
+    }
+  }
+});
+
+// Pro-tip: Save exact state right before the tab closes or refreshes
+window.addEventListener("beforeunload", () => {
+    if (examState && !examState.submitted) {
+        saveExamState();
+    }
+});// Pro-tip: Save exact state right before the tab closes or refreshes
+window.addEventListener("beforeunload", () => {
+    if (examState && !examState.submitted) {
+        saveExamState();
+    }
+});// Pro-tip: Save exact state right before the tab closes or refreshes
+window.addEventListener("beforeunload", () => {
+    if (examState && !examState.submitted) {
+        saveExamState();
+    }
+});
+
+
 function renderExamKeys() {
   const keysDiv = document.getElementById("questionKeys");
   keysDiv.innerHTML = examState.questions.map((_, i) => `
@@ -999,45 +1247,79 @@ function renderExamKeys() {
   `).join("");
 }
 
+function saveExamState(){
+  if(currentUser && examState){
+    localStorage.setItem("examState_" + currentUser.id, JSON.stringify(examState));
+  }
+}
+
 function startExamTimer() {
   clearInterval(examInterval);
   examInterval = setInterval(() => {
-    examState.durationSec--;
+    // Calculate accurate time left using endTime
+    if (examState.endTime) {
+        examState.durationSec = Math.floor((examState.endTime - Date.now()) / 1000);
+    } else {
+        examState.durationSec--; // Fallback just in case
+    }
+    
     const s = Math.max(0, examState.durationSec);
     const mm = Math.floor(s / 60).toString().padStart(2, "0");
     const ss = (s % 60).toString().padStart(2, "0");
     document.getElementById("examTimer").textContent = `${mm}:${ss}`;
-    if (examState.durationSec <= 0) finalizeExam();
-    saveExamBackup();
+    
+    if (examState.durationSec <= 0) {
+        clearInterval(examInterval);
+        alert("Time is up! Your exam will now be submitted.");
+        finalizeExam(true);
+    }
   }, 1000);
 }
-
-document.getElementById("btnSubmitExam").onclick = () => {
-  if (confirm("Submit exam?")) finalizeExam();
-};
-
-async function finalizeExam() {
+    
+async function finalizeExam(forced = false) {
   clearInterval(examInterval);
   const subj = db.subjects.find(s => s.id == examState.subjectId);
+  
+  // 1. Calculate Score & Build Answer Map
   let score = 0;
+  const answerMap = {}; // New way to store answers (by ID)
+
   examState.questions.forEach((q, idx) => {
-    if (examState.answers[idx] === q.correct) score += Number(subj.marksPerQuestion);
+    // Store answer linked to Question ID
+    answerMap[q.id] = examState.answers[idx] || null;
+
+    // Grade it
+    if (examState.answers[idx] === q.correct) {
+        score += Number(subj.marksPerQuestion);
+    }
   });
+
+  // 2. Save to Database
   db.scores.push({
     studentId: currentUser.id,
     subjectId: examState.subjectId,
     subject: examState.subjectName,
-    score,
+    score: score,
     totalMarks: examState.totalMarks,
-    answers: examState.answers
+    answers: answerMap, // <--- Saving the Map, not the Array
+    date: new Date().toISOString()
   });
+  
   await commit();
-  localStorage.removeItem("exam_backup");
+  examState.submitted = true;
+  
   document.getElementById("examCard").classList.add("hidden");
   document.getElementById("subjectPickerCard").classList.remove("hidden");
   prepareStudentSubjectDropdown();
-  alert("Submitted.");
+  
+  alert("Submitted! Your score has been recorded.");
+  
+  if (forced) {
+   alert("Your exam has been automatically submitted.");
 }
+  
+}
+
 
 /* ---------------------------
    Results & Export
@@ -1121,8 +1403,52 @@ function refreshResultSubjects() {
 function showStudentAnswers(sid, subid) {
   const sc = db.scores.find(x => x.studentId == sid && x.subjectId == subid);
   const st = db.students.find(x => x.id == sid);
-  const qs = db.questions.filter(x => x.subjectId == subid);
-  document.getElementById("answerSheetContent").innerHTML = `<h3>${st.name} - ${sc.subject}</h3>` + qs.map((q, i) => `<p>Q${i+1}: ${q.question}<br>Ans: ${sc.answers[i] || 'N/A'} (Correct: ${q.correct})</p>`).join("");
+
+  if (!sc || !st) return alert("Error loading result details.");
+
+  // Get ONLY attempted question IDs from the score record
+  const attemptedIds = Object.keys(sc.answers);
+
+  // Build list of questions with their full data
+  const qs = attemptedIds.map(id => db.questions.find(q => q.id == id)).filter(Boolean);
+
+  let html = `<div class="transcript-header">
+                <h3>${st.name} — ${sc.subject}</h3>
+                <p>Final Score: <b>${sc.score} / ${sc.totalMarks}</b></p>
+              </div><hr>`;
+
+  html += qs.map((q, i) => {
+    const studentAns = sc.answers[q.id] || "-";
+    const isCorrect = studentAns === q.correct;
+    
+    // Logic to highlight the student's choice
+    const getStyle = (letter) => {
+      if (letter === q.correct) return 'style="color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 2px 5px; border-radius: 4px;"'; 
+      if (letter === studentAns && !isCorrect) return 'style="color: #c62828; font-weight: bold; background: #ffebee; padding: 2px 5px; border-radius: 4px;"';
+      return '';
+    };
+
+    return `
+      <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:15px;">
+        <div style="margin-bottom: 8px;"><strong>Q${i+1}:</strong> ${escapeHtml(q.question)}</div>
+        
+        <div style="margin-left: 20px; font-size: 0.95em;">
+          <div ${getStyle('A')}>A. ${escapeHtml(q.A)}</div>
+          <div ${getStyle('B')}>B. ${escapeHtml(q.B)}</div>
+          <div ${getStyle('C')}>C. ${escapeHtml(q.C)}</div>
+        </div>
+
+        <div style="margin-top: 8px; font-size: 0.85em; color: #555;">
+          <span>Selection: <b>${studentAns}</b></span> | 
+          <span>Correct: <b>${q.correct}</b></span>
+          ${isCorrect ? ' <b style="color:green">[CORRECT]</b>' : ' <b style="color:red">[WRONG]</b>'}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("answerSheetContent").innerHTML = html;
+document.getElementById("answerSearchInput").value = "";
   document.getElementById("adminCard").classList.add("hidden");
   document.getElementById("answerSheetCard").classList.remove("hidden");
 }
@@ -1161,39 +1487,7 @@ function checkStudentNameExists() {
     status.style.color = "#2e7d32";
   }
 }
-document.getElementById("btnExportStudents").onclick = function () {
 
-  if (!db.students.length) {
-    alert("No students to export.");
-    return;
-  }
-
-  let csv = "Username,Full Name,Class,Password\n";
-
-  db.students.forEach(s => {
-    csv += `"${s.username}","${s.name}","${s.class}","${s.password}"\n`;
-  });
-
-  downloadCSV(csv, "students.csv");
-};
-
-  document.getElementById("btnExportResults").onclick = function () {
-
-  if (!db.scores.length) {
-    alert("No results to export.");
-    return;
-  }
-
-  let csv = "Student Name,Username,Class,Subject,Score,Total Marks\n";
-
-  db.scores.forEach(sc => {
-    const st = db.students.find(s => s.id === sc.studentId);
-
-    csv += `"${st?.name || "Unknown"}","${st?.username || "-"}","${st?.class || "-"}","${sc.subject}",${sc.score},${sc.totalMarks}\n`;
-  });
-
-  downloadCSV(csv, "results.csv");
-};
 
   function downloadCSV(content, filename) {
 
@@ -1209,47 +1503,6 @@ document.getElementById("btnExportStudents").onclick = function () {
   document.body.removeChild(link);
 }
 
-document.getElementById("btnViewAllAnswers").onclick = function () {
-
-  if (!db.scores.length) {
-    alert("No answers available.");
-    return;
-  }
-
-  let html = "";
-
-  db.scores.forEach(sc => {
-
-    const st = db.students.find(s => s.id === sc.studentId);
-    const qs = db.questions.filter(q => q.subjectId === sc.subjectId);
-
-    html += `<div style="margin-bottom:30px">
-      <h3>${st ? st.name : "Unknown"} — ${sc.subject}</h3>`;
-
-    qs.forEach((q, i) => {
-      html += `
-        <p>
-          <strong>Q${i+1}:</strong> ${q.question}<br>
-          Student Answer: <b>${sc.answers[i] || "N/A"}</b><br>
-          Correct Answer: <b>${q.correct}</b>
-        </p>
-      `;
-    });
-
-    html += `</div><hr>`;
-  });
-
-  document.getElementById("answerSheetHeader").textContent = "All Student Answers";
-  document.getElementById("answerSheetContent").innerHTML = html;
-
-  document.getElementById("adminCard").classList.add("hidden");
-  document.getElementById("answerSheetCard").classList.remove("hidden");
-};
-
-document.getElementById("btnPrintAnswers").onclick = function () {
-  window.print();
-};
-  
 function renderAllAdmin() { 
   refreshClassFilters();        // Refreshes the main filters
   refreshQuestionAddSubjects(); // Refreshes subjects in the 'Add Question' area
@@ -1264,52 +1517,89 @@ document.getElementById("btnLogoutAdmin").onclick = () => {
   localStorage.removeItem("cbt_user");
   location.reload();
 };
-document.getElementById("btnLogoutStudent").onclick = () => {
+
+document.getElementById("btnLogoutStudent").onclick = async () => {
+
+  if (examState && !examState.submitted) {
+
+      const confirmExit = confirm(
+        "You are currently taking an exam.\n\nLogging out will automatically submit your exam.\n\nContinue?"
+      );
+
+      if (!confirmExit) return;
+
+      try {
+        await finalizeExam(true); // wait for save to finish
+      } catch (err) {
+        alert("Error submitting exam. Please check your connection.");
+        return;
+      }
+  }
+
   localStorage.removeItem("cbt_user");
   location.reload();
 };
+
 document.getElementById("btnCloseAnswerSheet").onclick = () => { document.getElementById("answerSheetCard").classList.add("hidden"); document.getElementById("adminCard").classList.remove("hidden"); };
 
 
-     (async function init(){
+   (async function init() {
   await loadDB();
   try {
     const savedUser = localStorage.getItem("cbt_user");
-    if(savedUser){
-        currentUser = JSON.parse(savedUser);
-        document.getElementById("loginCard").classList.add("hidden");
-        if(currentUser.role === "admin"){
-            document.getElementById("adminCard").classList.remove("hidden");
-            renderAllAdmin();
-        } else {
-            document.getElementById("studentCard").classList.remove("hidden");
-            document.getElementById("studentHeader").textContent = `Student Panel — ${currentUser.name} (${currentUser.class})`;
-            const backup = localStorage.getItem("exam_backup");
-            if(backup){
-               examState = JSON.parse(backup);
-               if(examState && examState.questions){
-                  document.getElementById("subjectPickerCard").classList.add("hidden");
-                  document.getElementById("examCard").classList.remove("hidden");
-                  renderExamQuestion();
-                  startExamTimer();
-               }
+    if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      document.getElementById("loginCard").classList.add("hidden");
+
+      if (currentUser.role === "admin") {
+        document.getElementById("adminCard").classList.remove("hidden");
+        renderAllAdmin();
+      } else {
+        document.getElementById("studentCard").classList.remove("hidden");
+        document.getElementById("studentHeader").textContent = `Student Panel — ${currentUser.name} (${currentUser.class})`;
+
+        const backup = localStorage.getItem("examState_" + currentUser.id);
+        if (backup) {
+          examState = JSON.parse(backup);
+          if (examState && examState.questions) {
+            if (examState.endTime && Date.now() > examState.endTime) {
+              alert("Your exam time has expired.");
+              localStorage.removeItem("examState_" + currentUser.id);
+              examState = null;
+              prepareStudentSubjectDropdown();
             } else {
-               prepareStudentSubjectDropdown();
+              promptResumeExam(currentUser.id); // Triggers our custom UI
             }
+          }
+        } else {
+          prepareStudentSubjectDropdown();
         }
-    }
-  } catch(err) {
+      }
+    } // <--- THIS WAS THE MISSING BRACE
+  } catch (err) {
     console.error("Initialization error:", err);
-    localStorage.clear();
+    // localStorage.clear(); // Careful with this, it wipes everything
   }
   refreshRegClassList();
 })();
-  
-  renderAllAdmin();
 
-window.editSubject = editSubject; window.deleteSubject = deleteSubject; window.editStudent = editStudent; window.deleteStudent = deleteStudent;
-window.studentSelect = studentSelect; window.examJump = examJump; window.showStudentAnswers = showStudentAnswers;
+// These are fine where they are
+renderAllAdmin();
 
+window.editSubject = editSubject;
+window.deleteSubject = deleteSubject;
+window.editStudent = editStudent;
+window.deleteStudent = deleteStudent;
+window.studentSelect = studentSelect;
+window.examJump = examJump;
+window.showStudentAnswers = showStudentAnswers;
+
+// THE PRO-TIP: Bulletproof Auto-Save
+window.addEventListener("beforeunload", () => {
+    if (typeof examState !== 'undefined' && examState && !examState.submitted) {
+        saveExamState();
+    }
+});
   function importBulkQuestions() {
   const file = document.getElementById("bulkFile").files[0];
   const subjectId = document.getElementById("questionSubjectSelect").value;
@@ -1378,6 +1668,287 @@ function parseCSV(text, subjectId) {
   commit();
   alert("CSV questions imported successfully");
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+
+// Submit Exam (Updated to use custom modal)
+  const submitBtn = document.getElementById("btnSubmitExam");
+  if (submitBtn) {
+    submitBtn.addEventListener("click", function () {
+      // Open the custom modal
+      document.getElementById("submitModalOverlay").classList.remove("hidden");
+    });
+  }
+
+  // Handle "Go Back" button inside the modal
+  const btnCancelSubmit = document.getElementById("btnCancelSubmit");
+  if (btnCancelSubmit) {
+    btnCancelSubmit.addEventListener("click", function() {
+      // Hide the modal and let them continue testing
+      document.getElementById("submitModalOverlay").classList.add("hidden");
+    });
+  }
+
+  // Handle "Yes, Submit" button inside the modal
+  const btnConfirmSubmit = document.getElementById("btnConfirmSubmit");
+  if (btnConfirmSubmit) {
+    btnConfirmSubmit.addEventListener("click", function() {
+      // Hide the modal and trigger the final submission
+      document.getElementById("submitModalOverlay").classList.add("hidden");
+      finalizeExam();
+    });
+  }
+
+  const classSelect = document.getElementById("limitClassSelect");
+const limitInput = document.getElementById("limitNumber");
+const saveBtn = document.getElementById("btnSaveLimit");
+const statusText = document.getElementById("limitStatus");
+
+if (saveBtn) {
+
+  // When class is selected, show existing limit
+  classSelect.addEventListener("change", function () {
+    const selected = this.value;
+    if (!selected) return;
+
+    const existingLimit = db.classLimits ? db.classLimits[selected] : null;
+
+    if (existingLimit) {
+      limitInput.value = existingLimit;
+      statusText.textContent = "Current limit loaded.";
+    } else {
+      limitInput.value = "";
+      statusText.textContent = "";
+    }
+  });
+
+  // Save button
+  saveBtn.addEventListener("click", function () {
+
+    const selectedClass = classSelect.value;
+    const limitValue = parseInt(limitInput.value);
+
+    if (!selectedClass || !limitValue || limitValue <= 0) {
+      alert("Please select class and enter valid number.");
+      return;
+    }
+
+    if (!db.classLimits) {
+      db.classLimits = {};
+    }
+
+    db.classLimits[selectedClass] = limitValue;
+
+    localStorage.setItem("cbt_db", JSON.stringify(db));
+
+    // Confirmation feedback
+    statusText.textContent = "Limit saved successfully ✔";
+    statusText.style.color = "green";
+
+    // Auto clear after 2 seconds
+    setTimeout(() => {
+      classSelect.value = "";
+      limitInput.value = "";
+      statusText.textContent = "";
+    }, 2000);
+  });
+}
+  
+const studentClassSelect = document.getElementById("studentClass");
+const slotInfo = document.getElementById("slotInfo");
+
+if (studentClassSelect) {
+
+  studentClassSelect.addEventListener("change", function () {
+
+    const selectedClass = this.value;
+
+    if (!selectedClass) {
+      slotInfo.textContent = "";
+      return;
+    }
+
+    const currentCount = db.students.filter(s => s.class === selectedClass).length;
+    const maxAllowed = db.classLimits ? db.classLimits[selectedClass] : null;
+
+    if (!maxAllowed) {
+      slotInfo.textContent = "No limit set for this class.";
+      slotInfo.style.color = "orange";
+      return;
+    }
+
+    const remaining = maxAllowed - currentCount;
+
+    if (remaining > 0) {
+      slotInfo.textContent = remaining + " slot(s) remaining.";
+      slotInfo.style.color = "green";
+    } else {
+      slotInfo.textContent = "Class is full.";
+      slotInfo.style.color = "red";
+    }
+
+  });
+
+}
+  
+const exportResultsBtn = document.getElementById("btnExportResults");
+
+if (exportResultsBtn) {
+  exportResultsBtn.addEventListener("click", function () {
+
+    const searchInput = document.getElementById("answerSearchInput");
+    const searchText = searchInput ? searchInput.value.toLowerCase() : "";
+
+    const filteredScores = db.scores.filter(sc => {
+      const st = db.students.find(s => s.id === sc.studentId);
+      if (!st) return false;
+
+      const fullText = (
+        st.name + " " +
+        st.username + " " +
+        st.class + " " +
+        sc.subject
+      ).toLowerCase();
+
+      return fullText.includes(searchText);
+    });
+
+    if (!filteredScores.length) {
+      alert("No matching results to export.");
+      return;
+    }
+
+    // Convert to Excel format
+    const data = filteredScores.map(sc => {
+      const st = db.students.find(s => s.id === sc.studentId);
+      return {
+        "Student Name": st?.name || "Unknown",
+        "Username": st?.username || "-",
+        "Class": st?.class || "-",
+        "Subject": sc.subject,
+        "Score": sc.score,
+        "Total Marks": sc.totalMarks
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Results");
+
+    XLSX.writeFile(workbook, "Filtered_Results.xlsx");
+  });
+}
+
+// View All Answers (Updated to show full options A/B/C)
+  const viewAllBtn = document.getElementById("btnViewAllAnswers");
+  if (viewAllBtn) {
+    viewAllBtn.addEventListener("click", function () {
+      if (!db.scores.length) {
+        alert("No answers available.");
+        return;
+      }
+
+      let html = "";
+html += `
+  <div style="text-align:center; margin-bottom:20px;">
+    <h2 style="margin:0;">${SCHOOL_NAME}</h2>
+    <h3 style="margin:5px 0;">CBT EXAMINATION ANSWER SCRIPT</h3>
+    <hr>
+  </div>
+`;
+
+      db.scores.forEach(sc => {
+        const st = db.students.find(s => s.id === sc.studentId);
+        // Get the questions that were actually part of this specific exam record
+        const attemptedIds = Object.keys(sc.answers);
+        const qs = attemptedIds.map(id => db.questions.find(q => q.id == id)).filter(Boolean);
+
+        html += `
+          <div style="margin-bottom:40px; border: 2px solid #eee; padding: 20px; border-radius: 12px;">
+            <h2 style="color: #1a237e; margin-top:0;">${st ? st.name : "Unknown Student"} — ${sc.subject}</h2>
+            <p>Class: <b>${st ? st.class : "-"}</b> | Score: <b>${sc.score} / ${sc.totalMarks}</b></p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">`;
+
+        qs.forEach((q, i) => {
+          const studentAns = sc.answers[q.id] || "-";
+          const isCorrect = studentAns === q.correct;
+
+          // Helper to style the options based on correctness
+          const getStyle = (letter) => {
+            if (letter === q.correct) return 'style="color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 4px 8px; border-radius: 4px; margin-bottom: 2px;"'; 
+            if (letter === studentAns && !isCorrect) return 'style="color: #c62828; font-weight: bold; background: #ffebee; padding: 4px 8px; border-radius: 4px; margin-bottom: 2px;"';
+            return 'style="padding: 4px 8px; margin-bottom: 2px;"';
+          };
+
+          html += `
+            <div style="margin-bottom:20px; padding-left: 10px; border-left: 4px solid ${isCorrect ? '#4caf50' : '#f44336'};">
+              <div style="margin-bottom: 8px;"><strong>Question ${i+1}:</strong> ${escapeHtml(q.question)}</div>
+              <div style="margin-left: 15px; font-size: 0.9em; display: flex; flex-direction: column; gap: 4px;">
+                <div ${getStyle('A')}>A. ${escapeHtml(q.A)}</div>
+                <div ${getStyle('B')}>B. ${escapeHtml(q.B)}</div>
+                <div ${getStyle('C')}>C. ${escapeHtml(q.C)}</div>
+              </div>
+              <div style="margin-top: 8px; font-size: 0.85em; color: #555; margin-left: 15px;">
+                Selection: <b>${studentAns}</b> | Correct: <b>${q.correct}</b>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      });
+
+      document.getElementById("answerSheetHeader").textContent = "All Student Answer Scripts";
+      document.getElementById("answerSheetContent").innerHTML = html;
+
+      document.getElementById("adminCard").classList.add("hidden");
+      document.getElementById("answerSheetCard").classList.remove("hidden");
+    });
+  }
+  });
+  
+document.addEventListener("click", function (e) {
+
+  if (e.target && e.target.id === "btnPrintAnswers") {
+
+      if (document.getElementById("answerSheetCard").classList.contains("hidden")) {
+          alert("Nothing to print.");
+          return;
+      }
+
+      window.print();
+  }
+});
+
+function filterAnswerScripts() {
+  const input = document.getElementById("answerSearchInput");
+  const filter = input.value.toLowerCase();
+  const blocks = document.querySelectorAll("#answerSheetContent > div");
+
+  blocks.forEach(block => {
+    const text = block.innerText.toLowerCase();
+    block.style.display = text.includes(filter) ? "block" : "none";
+  });
+}
+
+
+function setClassLimit() {
+  const className = document.getElementById("limitClassName").value.trim();
+  const limit = parseInt(document.getElementById("limitNumber").value);
+
+  if (!className || !limit) {
+    alert("Enter valid class and limit.");
+    return;
+  }
+
+  db.classLimits[className] = limit;
+
+  localStorage.setItem("cbt_db", JSON.stringify(db));
+
+  alert("Class limit saved successfully.");
+}
+
+
 </script>
 </body>
 </html>
