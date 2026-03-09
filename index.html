@@ -1224,7 +1224,50 @@ function renderExamQuestion() {
     </div>
   `;
 
+// -------------------- Submit Exam Button --------------------
+const submitBtn = document.getElementById("btnSubmitExam");
 
+if (submitBtn) {
+  submitBtn.onclick = () => {
+    if (!confirm("Are you sure you want to submit your exam?")) return;
+    submitExam();
+  };
+}
+  
+// -------------------- Submit Exam --------------------
+function submitExam() {
+
+  clearInterval(examInterval);
+
+  const subject = db.subjects.find(s => s.id == examState.subjectId);
+
+  let score = 0;
+
+  examState.questions.forEach((q,i)=>{
+    if(examState.answers[i] === q.correct){
+      score += Number(subject.marksPerQuestion) || 1;
+    }
+  });
+
+  db.scores.push({
+    studentId: currentUser.id,
+    subjectId: examState.subjectId,
+    subjectName: examState.subjectName,
+    score,
+    total: examState.totalMarks,
+    date: new Date().toISOString()
+  });
+
+  saveDB();
+
+  localStorage.removeItem("examState_" + currentUser.id);
+  localStorage.removeItem("examInProgress");
+
+  alert("Exam submitted successfully!");
+
+  location.reload();
+}
+  
   // Button Visibility
   document.getElementById("btnPrevQ").disabled = (i === 0);
   const last = (i === examState.questions.length - 1);
