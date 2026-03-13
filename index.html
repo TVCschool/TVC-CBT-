@@ -1482,28 +1482,31 @@ function refreshResultSubjects() {
 }
   
   function populateResetDropdowns() {
-  const classSelect = document.getElementById("resetClass");
-  const subjectSelect = document.getElementById("resetSubject");
-  const studentSelect = document.getElementById("resetStudent");
+    if (!db.students) db.students = [];
+    if (!db.subjects) db.subjects = [];
 
-  // 1. Get unique classes from your subjects list
-  const classes = [...new Set(db.subjects.map(s => s.class))].sort();
-  classSelect.innerHTML = `<option value="all">All Classes</option>`;
-  classes.forEach(c => {
-    classSelect.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-  });
+    const classSelect = document.getElementById("resetClass");
+    const subjectSelect = document.getElementById("resetSubject");
+    const studentSelect = document.getElementById("resetStudent");
 
-  // 2. Populate Subjects
-  subjectSelect.innerHTML = `<option value="all">All Subjects</option>`;
-  db.subjects.forEach(s => {
-    subjectSelect.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name} (${s.class})</option>`);
-  });
+    // 1. Get unique classes from your subjects list
+    const classes = [...new Set(db.subjects.map(s => s.class))].sort();
+    classSelect.innerHTML = `<option value="all">All Classes</option>`;
+    classes.forEach(c => {
+        classSelect.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+    });
 
-  // 3. Populate Students
-  studentSelect.innerHTML = `<option value="all">All Students</option>`;
-  db.students.forEach(st => {
-    studentSelect.insertAdjacentHTML('beforeend', `<option value="${st.id}">${st.name} (${st.class})</option>`);
-  });
+    // 2. Populate Subjects
+    subjectSelect.innerHTML = `<option value="all">All Subjects</option>`;
+    db.subjects.forEach(s => {
+        subjectSelect.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name} (${s.class})</option>`);
+    });
+
+    // 3. Populate Students
+    studentSelect.innerHTML = `<option value="all">All Students</option>`;
+    db.students.forEach(st => {
+        studentSelect.insertAdjacentHTML('beforeend', `<option value="${st.id}">${st.name} (${st.class})</option>`);
+    });
 }
   
 function showStudentAnswers(sid, subid) {
